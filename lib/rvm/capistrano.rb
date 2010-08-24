@@ -36,6 +36,9 @@ Capistrano::Configuration.instance(true).load do
   # Use the default ruby.
   _cset(:rvm_ruby_string, "default")
 
+  # Use rvmsudo
+  _cset(:sudo, "rvmsudo")
+  _cset(:sudo_prompt, "[sudo] password for #{user}:")
 end
 
 # E.g, to use ree and rails 3:
