@@ -6,24 +6,27 @@ if [[ ! -z "$GEM_PATH" ]] ; then prefix="GEM_PATH='$GEM_PATH' $prefix" ; fi
 # Every argument is a sudo argument until a command is found
 for arg in "$@"
 do
+  # Quote arguments with spaces
+  if [[ "$arg" =~ " " ]]; then arg="\"$arg\""; fi
+
   case "$arg" in
     -*)   if [ ! -z "$cmd" ]; then
-            cmd="$cmd \"$arg\""
+            cmd="$cmd $arg"
           else
             sudo_switch="$arg"
           fi
           ;;
     *)    if [ ! -z "$sudo_switch" ]; then
-            sudo_args="$sudo_args $sudo_switch \"$arg\""
+            sudo_args="$sudo_args $sudo_switch $arg"
           else
-            cmd="$cmd \"$arg\""
+            cmd="$cmd $arg"
           fi
           unset sudo_switch
           ;;
   esac
 done
 
-eval "sudo $sudo_args" "/usr/bin/env $prefix $cmd"
+#eval "sudo $sudo_args" "/usr/bin/env $prefix $cmd"
 # rvm_env_prefix="PATH='$PATH'"
 # exec sudo -E /usr/bin/env "$rvm_env_prefix" "$@"
 
