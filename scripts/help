@@ -1,26 +1,46 @@
 #!/usr/bin/env bash
+
 rvm_base_except="selector"
-source "$rvm_scripts_path/base"
+
+source "$rvm_path/scripts/base"
 
 rvm_help_path="${rvm_help_path:-"$rvm_path/help"}"
 
-command="$(echo $* | awk '{print $1}')"
-action="$(echo $* | awk '{print $2}')"
-# Reserved for future use:
-args=$(echo "$*" | awk '{$1=""; $2="" ; print}' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+args=($*)
 
-if [[ ! -z "$command" ]] && [[ -s "${rvm_help_path}/${command}" ]] ; then
-  if [[ ! -z "$action" ]] && [[ -s "${rvm_help_path}/${command}/${action}" ]] ; then
-    cat "${rvm_help_path}/${command}/${action}" | ${PAGER:-less}
+command="${args[$__array_start]}"
+args[$__array_start]=""
+args=(${args[@]})
+
+action="${args[$array_start]}"
+args[$__array_start]=""
+args=(${args[@]})
+pager="${PAGER:-less}"
+
+if [[ -n "$command" && -s "${rvm_help_path}/${command}" ]] ; then
+
+  if [[ -n "$action" && -s "${rvm_help_path}/${command}/${action}" ]] ; then
+
+    $pager "${rvm_help_path}/${command}/${action}"
+
   else
-    cat "${rvm_help_path}/${command}" | ${PAGER:-less}
+
+    $pager "${rvm_help_path}/${command}"
+
   fi
+
 else
-  cat "${rvm_path:-$HOME/.rvm}/README" | ${PAGER:-less}
-  $rvm_scripts_path/log "info" "\nCommands available with 'rvm help':\n\n $(builtin cd "${rvm_help_path}" ; \ls | \tr "\n" ' ')"
+
+  $pager "${rvm_path:-$HOME/.rvm}/README"
+
+  "$rvm_path/scripts/log" "info" \
+    "Commands available with 'rvm help':\n\n    $(builtin cd "${rvm_help_path}" ; find . -maxdepth 1 -mindepth 1 -type f -print | \tr "\n" ' ' | sed -e 's#./##g')"
 fi
 
-$rvm_scripts_path/log "info" "\nFor additional information please visit RVM's documentation website:\n\n    http://rvm.beginrescueend.com/"
-$rvm_scripts_path/log "info" "\nIf you still cannot find what an answer to your question, find me 'wayneeseguin' in #rvm on irc.freenode.net:\n\n    http://webchat.freenode.net/?channels=rvm\n"
+"$rvm_path/scripts/log" "info" \
+  "For additional information please visit RVM's documentation website:\n\n    http://rvm.beginrescueend.com/"
+
+"$rvm_path/scripts/log" "info" \
+  "If you still cannot find what an answer to your question, find me 'wayneeseguin' in #rvm on irc.freenode.net:\n\n    http://webchat.freenode.net/?channels=rvm\n"
 
 exit $?

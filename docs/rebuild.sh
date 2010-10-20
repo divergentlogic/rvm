@@ -16,8 +16,8 @@ rvm_docs_src_dir=${rvm_base_dir}/docs
 rvm_tmp_dir=${rvm_base_dir}/tmp
 rvm_docs_target_man_dir=${rvm_base_dir}/man
 
-mkdir -p ${rvm_tmp_dir}
-mkdir -p ${rvm_docs_target_man_dir}
+\mkdir -p ${rvm_tmp_dir}
+\mkdir -p ${rvm_docs_target_man_dir}
 
 echo "Starting doc generation run through."
 
@@ -32,7 +32,7 @@ find ${rvm_docs_src_dir} -type f -name *.txt | while read rvm_manpage_file; do
     # of the source file.
 
     # it should be something like 'RVM(1)'
-    rvm_manpage_name_full="$(cat ${rvm_manpage_file} | head -n 3 | grep -o '^[^(]*[(][^)]*[)]$')"
+    rvm_manpage_name_full="$(head -n 3 < "$rvm_manpage_file" | \grep -o '^[^(]*[(][^)]*[)]$')"
 
     if [[ -z "${rvm_manpage_name_full}" ]]; then
       echo "Unable to detect manpage name, stopping build process..." 1>&2
@@ -52,7 +52,7 @@ find ${rvm_docs_src_dir} -type f -name *.txt | while read rvm_manpage_file; do
     if [[ "$?" -gt 0 ]]; then
       echo "Unable to generate manpage for $rvm_manpage_name_full"
     else
-      rm -f "$( echo "$rvm_manpage_file" | sed 's/.txt$/.xml/')"
+      \rm -f "$( echo "$rvm_manpage_file" | sed 's/.txt$/.xml/')"
       # compression is optional, but gzip check added for neatness
       if command -v gzip >/dev/null 2>&1; then
         echo "gzip compressing the manpage"

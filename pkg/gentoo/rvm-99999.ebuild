@@ -6,10 +6,10 @@ EGIT_REPO_URI="git://github.com/wayneeseguin/rvm.git"
 
 inherit git
 
+SRC_URI=""
+
 DESCRIPTION="RVM facilitates easy installation and management of multiple Ruby environments and sets of gems"
 HOMEPAGE="http://rvm.beginrescueend.com/"
-
-SRC_URI=""
 LICENSE="MIT"
 SLOT="0"
 KEYWORDS="~x86"
@@ -29,24 +29,22 @@ src_install() {
 	for v in `env | egrep '^rvm_' | cut -d '=' -f 1`; do
 		unset $v
 	done
+
+	# Set variables for installation (only!)
 	export rvm_prefix="${D}"
 	export rvm_path="${D}${RVM_DIR}"
-	export rvm_sandboxed=1
+	export rvm_selfcontained=1
 
 	./install || die "Installation failed."
 
-	echo "rvm_sandboxed=1" > "${T}"/rvmrc
-	echo "rvm_prefix=\"$(dirname $RVM_DIR)\""
+	# Set variables for actual operation in a default rvmrc
+	echo "rvm_selfcontained=1" > "${T}"/rvmrc
+	echo "rvm_prefix=\"$(dirname $RVM_DIR)/\"" >> "${T}"/rvmrc
 	echo "rvm_path=\"${RVM_DIR}\"" >> "${T}"/rvmrc
 
 	insinto /etc
 	doins "${T}"/rvmrc || die "Failed to install /etc/rvmrc."
 	elog "A default /etc/rvmrc has been installed.  Feel free to modify it."
-	elog
-
-	insinto ${RVM_DIR}/environments
-	doins "${T}"/system || die "Failed to install ${RVM_DIR}/environments/system."
-	elog "You may also wish to review ${RVM_DIR}/environments/system ."
 	elog
 
 	elog "Before any user (including root) can use rvm, the following line must be appended"

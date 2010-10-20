@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
 __rvm_shell_lookup_script() {
-  local relative_scripts_dir="$(dirname -- "$(dirname -- "$0")")/scripts"
-  for directory in "$rvm_scripts_path" "$HOME/.rvm/scripts" "/usr/local/rvm/scripts" "$relative_scripts_dir"; do
+  local relative_scripts_dir
+  relative_scripts_dir="$(dirname -- "$(dirname -- "$0")")/scripts"
+  for directory in "$rvm_path/scripts" "$HOME/.rvm/scripts" "/usr/local/rvm/scripts" "$relative_scripts_dir"; do
     if [[ -d "$directory" && -s "$directory/rvm" ]]; then
       echo "$directory/rvm"
       return
@@ -11,7 +12,7 @@ __rvm_shell_lookup_script() {
 }
 
 # If the first argument isn't -c, remove it and set it to the ruby string value.
-if [[ -n "$1" && ! -f "$1" && -n "$(echo "$1" | grep -v '^-')" ]]; then
+if [[ -n "$1" && ! -f "$1" && -n "$(echo "$1" | \grep -v '^-')" ]]; then
   rvm_shell_ruby_string="$1"
   shift
 fi
@@ -27,7 +28,7 @@ if [[ -n "$rvm_shell_rvm_path" ]]; then
         exit 1
       fi
   else
-    rvm load-rvmrc >/dev/null 2>&1
+    rvm rvmrc load >/dev/null 2>&1
   fi
 fi
 

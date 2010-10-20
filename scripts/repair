@@ -1,66 +1,199 @@
 #!/usr/bin/env bash
 
-source "$rvm_scripts_path/base"
+source "$rvm_path/scripts/base"
 
-usage() {
-  echo "Usage: rvm repair {symlinks,environments,archives,all}" >&2
-  return 1
+usage()
+{
+  printf "
+  Usage:
+
+    rvm repair [option]
+
+  Options:
+    wrappers     - Repair wrappers
+    symlinks     - Repair symlinks
+    environments - Repair environments
+    archives     - Repair archives
+    gemsets      - Repair gemsets
+    all          - Repair all of the above
+
+"
+}
+
+repair_gemsets()
+{
+  local directory directories
+
+  "$rvm_path/scripts/log" "info" \
+    "Removing gemsets missing names or interpreters."
+
+  (
+    builtin cd "${rvm_gems_path:-"rvm_path/gems"}"
+
+    directories=(
+      $( find . -mindepth 1 -maxdepth 1 -type d | grep '@$' )
+      $( find . -mindepth 1 -maxdepth 1 -type d | grep '^./@')
+    )
+
+    for directory in "${directories[@]//.\/}" ; do
+
+      rm -rf "./$directory/"
+
+    done
+  )
+
+  "$rvm_path/scripts/log" "info" "Gemsets repaired."
+
+  return 0
+}
+
+repair_wrappers()
+{
+  local wrapper_ruby_name
+
+  "$rvm_path/scripts/log" "info" "Regenerating all wrappers..."
+
+  while read -r wrapper_ruby_name ; do
+
+    "$rvm_path/scripts/log" "info" \
+      "Regenerating wrappers for $wrapper_ruby_name"
+
+    __rvm_run "wrappers.regenerate" \
+      "\"$rvm_path/scripts/wrapper\" '$wrapper_ruby_name'"
+
+  done < <("$rvm_path/scripts/list" gemsets strings)
+
+  "$rvm_path/scripts/log" "info" "Wrappers regenerated"
+
+  return 0
 }
 
 # Removes stale symlinks in $rvm_bin_path, likely
 # related to wrappers.
-repair_symlinks() {
-  __rvm_pushpop "$rvm_bin_path"
-  for executable_name in $(\find . -type l); do
-    [[ -e "$executable_name" || "$(readlink "$executable_name")" != "$rvm_wrappers_path/"* ]] && continue
-    if [[ -f "$executable_name" ]]  ; then
-      $rvm_scripts_path/log "info" "Removing stale symlink from $(basename "$executable_name")"
-      rm -f "$executable_name"
-    fi
-  done; unset executable_name
-  __rvm_pushpop
+repair_symlinks()
+{
+  "$rvm_path/scripts/log" "info" "Repairing symlinks..."
+
+  (
+    builtin cd "${rvm_bin_path:-"$rvm_path/bin"}"
+
+    for executable_name in $(\find \. -type l); do
+
+      if [[ -e "$executable_name" \
+        || "$(readlink "$executable_name")" != "$rvm_path/wrappers/"* ]] ; then
+        continue
+      fi
+
+      if [[ -f "$executable_name" ]]  ; then
+
+        "$rvm_path/scripts/log" "info" \
+          "removing stale symlink from $(basename "$executable_name")"
+
+        \rm -f "$executable_name"
+
+      fi
+    done
+  )
+
+  "$rvm_path/scripts/log" "info" "Symlinks repaired"
 }
 
 # Regenerates each symlink file.
-repair_environments() {
-  for environment_name in $(\ls "$rvm_environments_path"); do
-    [[ -L "$rvm_environments_path/$environment_name" ]] && continue
-    $rvm_scripts_path/log "info" "Regenerating environment file for '$environment_name'"
-    [[ -f "$rvm_environments_path/$environment_name" ]] && rm -f "$rvm_environments_path/$environment_name"
-    (source "$rvm_scripts_path/base"; __rvm_become "$environment_name"; __rvm_ensure_has_enviroment_files)
-  done; unset environment_name
+repair_environments()
+{
+  local environment_name environments
+
+  "$rvm_path/scripts/log" "info" "Regenerating environments..."
+
+  environments=($(builtin cd "$rvm_path/environments" ; find . -maxdepth 1 -mindepth 1 -type f))
+
+  for environment_name in "${environments[@]//.\/}" ; do
+
+    [[ -L "$rvm_path/environments/$environment_name" ]] && continue
+
+    "$rvm_path/scripts/log" "info" \
+      "Regenerating environment file for '$environment_name'"
+
+    [[ -f "$rvm_path/environments/$environment_name" ]] && \rm -f "$rvm_path/environments/$environment_name"
+
+    (
+    source "$rvm_path/scripts/base"
+
+    __rvm_become "$environment_name"
+
+    __rvm_ensure_has_environment_files
+    )
+
+  done
+
+  "$rvm_path/scripts/log" "info" "Environments regenerated"
+
+  return 0
 }
 
 # Removes archives that have incorrect md5 sums.
-repair_archives() {
-  for archive_file in $(\ls "$rvm_archives_path"); do
-    [[ -f "$rvm_archives_path/$archive_file" ]] || continue
-    local stored_md5sum="$($rvm_scripts_path/db "$rvm_config_path/md5" "$archive_file" | head -n1)"
-    if [[ -n "$stored_md5sum" ]] && ! $rvm_scripts_path/md5 "$rvm_archives_path/$archive_file" "$stored_md5sum" ; then
-      $rvm_scripts_path/log "info" "Removing archive for '$archive_file' - Incorrect md5 checksum."
-      rm -rf "$rvm_archives_path/$archive_file"
+repair_archives()
+{
+  local archive_file archives stored_md5sum
+
+  "$rvm_path/scripts/log" "info" "Repairing archives..."
+
+  archives=($(builtin cd "${rvm_archives_path:-"$rvm_path/archives"}" ; find . -maxdepth 1 -mindepth 1 -type f))
+
+  for archive_file in "${archives[@]//.\/}" ; do
+
+    [[ -f "${rvm_archives_path:-"$rvm_path/archives"}/$archive_file" ]] || continue
+
+    stored_md5sum="$("$rvm_path/scripts/db" "$rvm_path/config/md5" "$archive_file" | head -n1)"
+
+    if [[ -n "$stored_md5sum" ]] ; then
+
+      if ! "$rvm_path/scripts/md5" "${rvm_archives_path:-"$rvm_path/archives"}/$archive_file" "$stored_md5sum" ; then
+
+        "$rvm_path/scripts/log" "info" "Removing archive for '$archive_file' - Incorrect md5 checksum."
+
+        rm -rf "${rvm_archives_path:-"$rvm_path/archives"}/$archive_file"
+      fi
     fi
-  done; unset archive_file
+  done
+
+  "$rvm_path/scripts/log" "info" "Archives repaired"
+
+  return 0
 }
 
-repair_all() {
+repair_all()
+{
   repair_symlinks
+
   repair_archives
+
   repair_environments
-  $rvm_scripts_path/log "info" "All items repaired."
+
+  repair_wrappers
+
+  return 0
 }
 
-if [[ -z "$1" ]]; then
+args=($*)
+action="${args[$__array_start]}"
+args[$__array_start]=""
+args=(${args[@]})
+
+if [[ -z "$action" ]]; then
   usage
   exit $?
 fi
 
-case "$1" in
-  all)          repair_all ;;
-  symlinks)     repair_symlinks ;;
+case "$action" in
+  all)          repair_all          ;;
+  symlinks)     repair_symlinks     ;;
+  gemsets)      repair_gemsets      ;;
   environments) repair_environments ;;
-  archives)     repair_archives;;
-  *)            usage ;;
+  archives)     repair_archives     ;;
+  wrappers)     repair_wrappers     ;;
+  help)         usage               ;;
+  *)            usage >&2 ; exit 1  ;;
 esac
 
 exit $?

@@ -8,7 +8,13 @@ module RVM
 
     # Gets the identifier after cd'ing to a path, no destructive.
     def tools_path_identifier(path)
-      normalize rvm(:tools, "path-identifier", path.to_s).stdout
+      path_identifier = rvm(:tools, "path-identifier", path.to_s)
+      if path_identifier.exit_status == 2
+        error_message = "The rvmrc located in '#{path}' could not be loaded, likely due to trust mechanisms."
+        error_message << " Please run 'rvm rvmrc {trust,untrust} \"#{path}\"' to continue, or set rvm_trust_rvmrcs to 1."
+        raise ErrorLoadingRVMRC, error_message
+      end
+      return normalize(path_identifier.stdout)
     end
 
     def tools_strings(*rubies)
@@ -16,7 +22,7 @@ module RVM
       names = {}
       value = rvm(:tools, :strings, *rubies)
       if value.successful?
-        parts = value.stdout.split("\n").map { |l| l.split }
+        parts = value.stdout.split
         rubies.each_with_index do |key, index|
           names[key] = normalize(parts[index])
         end
